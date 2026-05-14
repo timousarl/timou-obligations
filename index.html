@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TIMOU — Obligations SARL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- ============================================================
+  CONFIGURATION — À MODIFIER AVANT DÉPLOIEMENT
+  
+  ÉTAPE 1 : Changer le mot de passe ci-dessous
+  ÉTAPE 2 : Créer un projet Firebase gratuit sur https://console.firebase.google.com
+            → Ajouter une app Web → Copier la config dans FIREBASE_CONFIG
+            → Activer Realtime Database → Règles : mode test (30 jours)
+  ============================================================ -->
+<script>
+  const APP_PASSWORD = "timou15062025"; // ← CHANGER ICI
+
+  const FIREBASE_CONFIG = {
+    apiKey:            "AIzaSyCKU9BnkXjYR4vWHqU3T1BIT1p2QxAr_sc",
+    authDomain:        "timou-app.firebaseapp.com",
+    databaseURL:       "https://VOTRE_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId:         "timou-app",
+    storageBucket:     "timou-app.firebasestorage.app",
+    messagingSenderId: "910792633713",
+    appId:             "1:910792633713:web:ac5b8b5f574fe54c1e5ad0"
+
+  };
+</script>
+<!-- ============================================================ -->
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #F5F3EE;
+  color: #1A1814;
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ---- LOGIN ---- */
+#login-screen {
+  position: fixed; inset: 0;
+  background: #F5F3EE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.login-box {
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  width: 340px;
+  text-align: center;
+}
+.login-logo { font-size: 22px; font-weight: 600; color: #C85A1E; margin-bottom: 6px; letter-spacing: -0.02em; }
+.login-sub { font-size: 13px; color: #9E9890; margin-bottom: 2rem; }
+.login-box input[type="password"] {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid rgba(0,0,0,0.14);
+  border-radius: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 15px;
+  background: #FAFAF8;
+  color: #1A1814;
+  text-align: center;
+  letter-spacing: 0.1em;
+  outline: none;
+  margin-bottom: 10px;
+  transition: border-color 0.12s;
+}
+.login-box input[type="password"]:focus { border-color: #C85A1E; }
+.login-btn {
+  width: 100%;
+  padding: 11px;
+  background: #C85A1E;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.login-btn:hover { background: #A84A16; }
+.login-error { font-size: 12px; color: #B02D2D; margin-top: 8px; min-height: 18px; }
+
+/* ---- MAIN APP ---- */
+#app { display: none; }
+
+header {
+  background: #fff;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: #C85A1E; }
+.logo span { color: #9E9890; font-weight: 300; font-size: 14px; margin-left: 10px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.sync-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ccc;
+  transition: background 0.3s;
+}
+.sync-dot.online { background: #2D7A4F; }
+.sync-dot.syncing { background: #9A6210; animation: pulse 0.8s infinite; }
+.sync-label { font-size: 12px; color: #9E9890; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.year-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  background: #FAE8DF;
+  color: #C85A1E;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+.stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 2rem; }
+.stat-card { background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; padding: 16px 18px; transition: box-shadow 0.15s; }
+.stat-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+.stat-num { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; margin-bottom: 5px; }
+.stat-lbl { font-size: 12px; color: #9E9890; }
+
+.toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.toolbar-label { font-size: 12px; color: #9E9890; margin-right: 4px; }
+.filter-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; padding: 6px 14px;
+  border-radius: 20px; border: 1px solid rgba(0,0,0,0.14);
+  background: #fff; color: #6B6560;
+  cursor: pointer; transition: all 0.12s;
+}
+.filter-btn:hover { background: #F0EDE6; color: #1A1814; }
+.filter-btn.active { background: #1A1814; color: #fff; border-color: #1A1814; font-weight: 500; }
+.filter-btn.f-fiscal.active { background: #1A5FA0; border-color: #1A5FA0; }
+.filter-btn.f-social.active { background: #9A6210; border-color: #9A6210; }
+.filter-btn.f-juridique.active { background: #5C3FA8; border-color: #5C3FA8; }
+.filter-btn.f-compta.active { background: #2D7A4F; border-color: #2D7A4F; }
+.filter-btn.f-pending.active { background: #B02D2D; border-color: #B02D2D; }
+
+.month-section { margin-bottom: 2rem; }
+.month-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.08); }
+.month-name { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #9E9890; }
+.month-progress { font-size: 11px; font-family: 'DM Mono', monospace; color: #9E9890; }
+.month-done .month-name { color: #2D7A4F; }
+
+.task-card {
+  background: #fff; border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 7px;
+  display: flex; align-items: flex-start; gap: 13px;
+  cursor: pointer; transition: all 0.12s;
+  position: relative; overflow: hidden;
+}
+.task-card::before { content:''; position:absolute; left:0;top:0;bottom:0; width:3px; background:transparent; transition:background 0.12s; }
+.task-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.06); transform: translateY(-1px); }
+.task-card.past-due::before { background: #B02D2D; }
+.task-card.upcoming::before { background: #9A6210; }
+.task-card.done { opacity: 0.42; }
+.task-card.done .task-title { text-decoration: line-through; color: #9E9890; }
+
+.check-box { width:20px; height:20px; min-width:20px; border-radius:50%; border:1.5px solid rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; margin-top:1px; transition:all 0.12s; font-size:11px; }
+.check-box.checked { background:#2D7A4F; border-color:#2D7A4F; color:#fff; }
+
+.task-body { flex:1; min-width:0; }
+.task-title { font-size:14px; font-weight:500; color:#1A1814; margin-bottom:3px; }
+.task-sub { font-size:12.5px; color:#6B6560; line-height:1.45; }
+.task-foot { display:flex; gap:6px; align-items:center; margin-top:7px; flex-wrap:wrap; }
+
+.badge { font-size:11px; font-weight:500; padding:2px 8px; border-radius:20px; }
+.b-fiscal { background:#E3EEF9; color:#1A5FA0; }
+.b-social { background:#FEF3DC; color:#9A6210; }
+.b-juridique { background:#EEE9FB; color:#5C3FA8; }
+.b-compta { background:#E3F2EB; color:#2D7A4F; }
+.b-due { background:#FCEAEA; color:#B02D2D; }
+.b-soon { background:#FEF3DC; color:#9A6210; }
+.date-label { font-family:'DM Mono',monospace; font-size:11px; color:#9E9890; }
+
+.section-sep { border:none; border-top:1px dashed rgba(0,0,0,0.1); margin:2rem 0; }
+.rec-header { font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:0.07em; color:#9E9890; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid rgba(0,0,0,0.08); }
+.empty { text-align:center; padding:3rem; color:#9E9890; font-size:14px; }
+.reset-btn { font-family:'DM Sans',sans-serif; font-size:12px; color:#9E9890; background:none; border:1px solid rgba(0,0,0,0.1); padding:5px 12px; border-radius:20px; cursor:pointer; margin-left:auto; transition:all 0.12s; }
+.reset-btn:hover { color:#B02D2D; border-color:#B02D2D; }
+
+/* ---- FIREBASE NOT CONFIGURED BANNER ---- */
+.banner { background:#FEF3DC; border:1px solid #EF9F27; border-radius:8px; padding:12px 16px; font-size:13px; color:#9A6210; margin-bottom:1.5rem; line-height:1.6; }
+.banner strong { font-weight:600; }
+.banner code { font-family:'DM Mono',monospace; background:rgba(0,0,0,0.07); padding:1px 5px; border-radius:3px; }
+
+@media (max-width:600px) {
+  .stats-row { grid-template-columns:repeat(2,1fr); }
+  .container { padding:1.5rem 1rem; }
+  header { padding:0 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">TIMOU</div>
+    <div class="login-sub">Obligations SARL 2026</div>
+    <input type="password" id="pwd-input" placeholder="Mot de passe" autofocus>
+    <button class="login-btn" id="login-btn">Accéder</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <header>
+    <div class="logo">TIMOU <span>Obligations SARL</span></div>
+    <div class="header-right">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span class="sync-label" id="sync-label">—</span>
+      <div class="year-badge">2026</div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="firebase-banner" style="display:none" class="banner">
+      <strong>Mode hors-ligne</strong> — Firebase n'est pas encore configuré. Les coches sont sauvegardées localement dans ce navigateur uniquement.<br>
+      Pour activer la synchronisation : <a href="https://console.firebase.google.com" target="_blank" style="color:#9A6210">créez un projet Firebase</a> et renseignez la config en haut du fichier HTML.
+    </div>
+
+    <div class="stats-row" id="stats"></div>
+
+    <div class="toolbar">
+      <span class="toolbar-label">Filtrer :</span>
+      <button class="filter-btn active" data-cat="all">Tout</button>
+      <button class="filter-btn f-fiscal" data-cat="fiscal">Fiscal / TVA / IS</button>
+      <button class="filter-btn f-social" data-cat="social">Social</button>
+      <button class="filter-btn f-juridique" data-cat="juridique">Juridique</button>
+      <button class="filter-btn f-compta" data-cat="compta">Comptabilité</button>
+      <button class="filter-btn f-pending" data-cat="pending">À faire</button>
+      <button class="reset-btn" id="resetBtn">Réinitialiser</button>
+    </div>
+
+    <div id="calendar"></div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ---- DATA ----
+const TASKS = [
+  { id:1,  month:1,  day:15, title:"1er acompte TVA — Régime réel simplifié", sub:"55 % de la TVA nette due au titre de N-1. À verser sur impots.gouv (espace professionnel).", cat:"fiscal" },
+  { id:2,  month:1,  day:31, title:"Déclaration annuelle TVA (CA12)", sub:"Déclaration récapitulative de TVA pour l'exercice clos au 31/12. Régime réel simplifié.", cat:"fiscal" },
+  { id:3,  month:2,  day:15, title:"1er acompte IS", sub:"25 % de l'IS estimé sur la base du résultat N-1. Taux réduit 15 % si éligible PME.", cat:"fiscal" },
+  { id:4,  month:3,  day:15, title:"Cotisations TNS — T1", sub:"Acompte trimestriel URSSAF pour les gérants majoritaires.", cat:"social" },
+  { id:5,  month:4,  day:15, title:"2e acompte IS", sub:"25 % de l'IS estimé.", cat:"fiscal" },
+  { id:6,  month:4,  day:30, title:"Déclaration de revenus personnelle", sub:"Revenus des gérants : salaires et dividendes perçus en N-1.", cat:"fiscal" },
+  { id:7,  month:5,  day:20, title:"Liasse fiscale IS (formulaire 2065)", sub:"Dépôt obligatoire. +15 jours de délai accordés en cas de télétransmission.", cat:"fiscal" },
+  { id:8,  month:6,  day:15, title:"3e acompte IS", sub:"25 % de l'IS estimé.", cat:"fiscal" },
+  { id:9,  month:6,  day:30, title:"Approbation des comptes en AG + PV", sub:"Délai légal de 6 mois après la clôture (31/12). Rédiger le procès-verbal.", cat:"juridique" },
+  { id:10, month:7,  day:31, title:"Dépôt des comptes annuels au greffe", sub:"Dans le mois suivant l'AG. Tribunal de commerce compétent.", cat:"juridique" },
+  { id:11, month:7,  day:15, title:"2e acompte TVA — Régime réel simplifié", sub:"40 % de la TVA nette due au titre de N-1.", cat:"fiscal" },
+  { id:12, month:9,  day:15, title:"4e acompte IS", sub:"25 % de l'IS estimé. Ajuster si le résultat prévisionnel diffère.", cat:"fiscal" },
+  { id:13, month:9,  day:15, title:"Cotisations TNS — T3", sub:"Acompte trimestriel URSSAF.", cat:"social" },
+  { id:14, month:10, day:31, title:"Inventaire annuel des stocks", sub:"Comptage et valorisation : stroopwafels, emballages, consommables.", cat:"compta" },
+  { id:15, month:11, day:30, title:"CFE — Cotisation Foncière des Entreprises", sub:"Paiement selon l'avis d'imposition reçu sur impots.gouv.", cat:"fiscal" },
+  { id:16, month:12, day:15, title:"Régularisation IS — solde éventuel", sub:"Si le résultat réel dépasse les acomptes versés, versement complémentaire.", cat:"fiscal" },
+  { id:17, month:12, day:20, title:"Point TVA de clôture d'exercice", sub:"Vérifier cohérence TVA collectée / déductible avant le 31/12.", cat:"fiscal" },
+  { id:18, month:12, day:31, title:"Clôture comptable de l'exercice", sub:"Arrêtés des comptes, lettrage, inventaire définitif.", cat:"compta" },
+  { id:50, month:0, day:0, title:"Émission et archivage des factures / tickets", sub:"Chaque vente documentée. Conservation 10 ans. Tickets de caisse acceptés pour le grand public.", cat:"compta" },
+  { id:51, month:0, day:0, title:"Rapprochement bancaire mensuel", sub:"Relevés bancaires vs écritures comptables. Identifier les écarts.", cat:"compta" },
+  { id:52, month:0, day:0, title:"Centralisation des frais et justificatifs", sub:"Frais véhicule, péages, stands, marchés, matières premières. Classer par mois.", cat:"compta" },
+  { id:53, month:0, day:0, title:"DSN mensuelle (si salariés)", sub:"Déclaration Sociale Nominative — 5 ou 15 du mois suivant les salaires.", cat:"social" },
+  { id:54, month:0, day:0, title:"Registre des décisions de gérance", sub:"Consigner toute décision importante : investissements, contrats, modifications.", cat:"juridique" },
+  { id:55, month:0, day:0, title:"Veille et traçabilité HACCP", sub:"Contrôle températures, traçabilité fournisseurs, hygiène point de vente.", cat:"juridique" },
+];
+
+const MONTHS = ["","Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const CAT_BADGE = { fiscal:"b-fiscal", social:"b-social", juridique:"b-juridique", compta:"b-compta" };
+const CAT_LABEL = { fiscal:"Fiscal", social:"Social", juridique:"Juridique", compta:"Comptabilité" };
+const NOW = new Date();
+
+let done = {};
+let dbRef = null;
+let useFirebase = false;
+let activeFilter = "all";
+let ignoreNextRemote = false;
+
+// ---- LOGIN ----
+document.getElementById("login-btn").addEventListener("click", tryLogin);
+document.getElementById("pwd-input").addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+
+function tryLogin() {
+  const val = document.getElementById("pwd-input").value;
+  if (val === APP_PASSWORD) {
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    initApp();
+  } else {
+    const err = document.getElementById("login-error");
+    err.textContent = "Mot de passe incorrect.";
+    document.getElementById("pwd-input").value = "";
+    setTimeout(() => err.textContent = "", 2500);
+  }
+}
+
+// ---- FIREBASE INIT ----
+function initApp() {
+  const isConfigured = FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "VOTRE_API_KEY";
+
+  if (!isConfigured) {
+    document.getElementById("firebase-banner").style.display = "block";
+    setSyncStatus("offline");
+    loadLocalDone();
+    render();
+    return;
+  }
+
+  try {
+    const app = initializeApp(FIREBASE_CONFIG);
+    const db = getDatabase(app);
+    dbRef = ref(db, "timou/done_2026");
+    useFirebase = true;
+
+    setSyncStatus("syncing");
+
+    onValue(dbRef, snapshot => {
+      if (ignoreNextRemote) { ignoreNextRemote = false; return; }
+      const val = snapshot.val();
+      done = val || {};
+      setSyncStatus("online");
+      render();
+    }, err => {
+      console.error("Firebase error", err);
+      setSyncStatus("offline");
+      loadLocalDone();
+      render();
+    });
+
+  } catch(e) {
+    console.error("Firebase init error", e);
+    setSyncStatus("offline");
+    loadLocalDone();
+    render();
+  }
+}
+
+function setSyncStatus(status) {
+  const dot = document.getElementById("sync-dot");
+  const lbl = document.getElementById("sync-label");
+  dot.className = "sync-dot " + status;
+  lbl.textContent = status === "online" ? "Synchronisé" : status === "syncing" ? "Connexion…" : "Hors-ligne";
+}
+
+function loadLocalDone() {
+  try { done = JSON.parse(localStorage.getItem("timou_done_2026") || "{}"); } catch(e) {}
+}
+
+function saveDone() {
+  if (useFirebase && dbRef) {
+    setSyncStatus("syncing");
+    ignoreNextRemote = true;
+    set(dbRef, done).then(() => setSyncStatus("online")).catch(() => setSyncStatus("offline"));
+  } else {
+    try { localStorage.setItem("timou_done_2026", JSON.stringify(done)); } catch(e) {}
+  }
+}
+
+// ---- HELPERS ----
+function taskDate(t) { return t.month === 0 ? null : new Date(2026, t.month-1, t.day); }
+function isPast(t) { const d = taskDate(t); return d && d < NOW && !done[t.id]; }
+function isUpcoming(t) { const d = taskDate(t); if(!d) return false; const diff=(d-NOW)/86400000; return diff>=0&&diff<=30&&!done[t.id]; }
+
+// ---- RENDER ----
+function render() {
+  renderStats();
+  renderCalendar();
+}
+
+function renderStats() {
+  const annual = TASKS.filter(t => t.month > 0);
+  const doneCount = annual.filter(t => done[t.id]).length;
+  const pastDue = annual.filter(isPast).length;
+  const soon = annual.filter(isUpcoming).length;
+  const pct = Math.round(doneCount / annual.length * 100);
+  document.getElementById("stats").innerHTML = `
+    <div class="stat-card"><div class="stat-num">${annual.length}</div><div class="stat-lbl">Échéances annuelles</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#2D7A4F">${doneCount} <span style="font-size:16px;font-weight:300;color:#9E9890">/ ${pct}%</span></div><div class="stat-lbl">Effectuées</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#9A6210">${soon}</div><div class="stat-lbl">Dans les 30 jours</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#B02D2D">${pastDue}</div><div class="stat-lbl">En retard</div></div>
+  `;
+}
+
+function renderCalendar() {
+  const cal = document.getElementById("calendar");
+  cal.innerHTML = "";
+  let filtered = TASKS.filter(t => {
+    if (activeFilter === "pending") return !done[t.id] && t.month > 0;
+    if (activeFilter === "all") return true;
+    return t.cat === activeFilter;
+  });
+  const annual = filtered.filter(t => t.month > 0);
+  const recurring = filtered.filter(t => t.month === 0);
+  if (!annual.length && !recurring.length) { cal.innerHTML = '<div class="empty">Aucune tâche pour ce filtre.</div>'; return; }
+
+  const byMonth = {};
+  for (const t of annual) { if (!byMonth[t.month]) byMonth[t.month]=[]; byMonth[t.month].push(t); }
+  for (const m of Object.keys(byMonth).map(Number).sort((a,b)=>a-b)) {
+    const tasks = byMonth[m];
+    const doneInMonth = tasks.filter(t=>done[t.id]).length;
+    const sec = document.createElement("div"); sec.className="month-section";
+    const hdr = document.createElement("div");
+    hdr.className = "month-header" + (doneInMonth===tasks.length?" month-done":"");
+    hdr.innerHTML = `<span class="month-name">${MONTHS[m]}</span><span class="month-progress">${doneInMonth}/${tasks.length}</span>`;
+    sec.appendChild(hdr);
+    tasks.forEach(t => sec.appendChild(makeCard(t)));
+    cal.appendChild(sec);
+  }
+
+  if (recurring.length) {
+    const sep = document.createElement("hr"); sep.className="section-sep"; cal.appendChild(sep);
+    const sec = document.createElement("div"); sec.className="month-section";
+    const hdr = document.createElement("div"); hdr.className="rec-header"; hdr.textContent="Tâches récurrentes — mensuel / continu";
+    sec.appendChild(hdr);
+    recurring.forEach(t => sec.appendChild(makeCard(t)));
+    cal.appendChild(sec);
+  }
+}
+
+function makeCard(t) {
+  const isDone = !!done[t.id];
+  const card = document.createElement("div");
+  let cls = "task-card";
+  if (isDone) cls += " done";
+  else if (isPast(t)) cls += " past-due";
+  else if (isUpcoming(t)) cls += " upcoming";
+  card.className = cls;
+  const d = taskDate(t);
+  const dateStr = d ? `avant le ${t.day} ${MONTHS[t.month].toLowerCase()}` : "";
+  card.innerHTML = `
+    <div class="check-box ${isDone?'checked':''}">${isDone?'✓':''}</div>
+    <div class="task-body">
+      <div class="task-title">${t.title}</div>
+      <div class="task-sub">${t.sub}</div>
+      <div class="task-foot">
+        <span class="badge ${CAT_BADGE[t.cat]}">${CAT_LABEL[t.cat]}</span>
+        ${dateStr?`<span class="date-label">${dateStr}</span>`:''}
+        ${isPast(t)?`<span class="badge b-due">En retard</span>`:''}
+        ${isUpcoming(t)?`<span class="badge b-soon">Bientôt</span>`:''}
+      </div>
+    </div>
+  `;
+  card.addEventListener("click", () => {
+    done[t.id] = !done[t.id];
+    saveDone();
+    render();
+  });
+  return card;
+}
+
+// ---- TOOLBAR ----
+document.querySelector(".toolbar").addEventListener("click", e => {
+  const btn = e.target.closest(".filter-btn");
+  if (!btn) return;
+  activeFilter = btn.dataset.cat;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b===btn));
+  renderCalendar();
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("Réinitialiser toutes les tâches cochées ?")) {
+    done = {};
+    saveDone();
+    render();
+  }
+});
+</script>
+</body>
+</html>
